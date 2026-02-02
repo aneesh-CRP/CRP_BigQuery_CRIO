@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.DS_Store
+
+# Build output
+dist/
+
+# Environment files (may contain secrets)
+.env
+client/.env
+
+# Compiled TypeScript (tsx runs .ts directly)
+*.js
+!eslint.config.js
+server.mjs
+
+# Terraform (state contains secrets!)
+infrastructure/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Logs
+*.log
+*.txt
+!README.md
+
+# IDE
+.vscode/
+.idea/
+tfplan

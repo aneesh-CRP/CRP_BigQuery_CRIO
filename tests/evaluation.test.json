@@ -1,0 +1,44 @@
+{
+    "eval_set_id": "bigquery_agent_complex_queries",
+    "name": "BigQuery Data Retrieval Tests",
+    "description": "Tests for verifying the agent can handle complex multi-step data retrieval questions.",
+    "eval_cases": [
+        {
+            "eval_id": "study_patient_counts",
+            "conversation": [
+                {
+                    "invocation_id": "test_inv_1",
+                    "user_content": {
+                        "parts": [
+                            {
+                                "text": "Which study has the most patients? Also list the top 3 sites for that study by patient count."
+                            }
+                        ],
+                        "role": "user"
+                    },
+                    "final_response": {
+                        "parts": [
+                            {
+                                "text": "It appears there are no patients in the database, so no study has the most patients."
+                            }
+                        ],
+                        "role": "model"
+                    },
+                    "intermediate_data": {
+                        "tool_uses": [
+                            {
+                                "name": "bigquery_sql_specialist",
+                                "args": {}
+                            }
+                        ]
+                    }
+                }
+            ],
+            "session_input": {
+                "app_name": "clinical_research_orchestrator",
+                "user_id": "test_user_eval",
+                "state": {}
+            }
+        }
+    ]
+}
