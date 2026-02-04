@@ -30,7 +30,7 @@ const location = process.env.GOOGLE_CLOUD_LOCATION || config.location;
  * Creates BigQuery tools with optional user authentication.
  * @param authToken - User's OAuth2 access token for BigQuery. If provided, queries run as user (for RLS).
  */
-export const createBigQueryTools = (authToken?: string) => {
+export const createBigQueryTools = (authToken?: string, onLog?: (msg: string) => void) => {
     let bigquery: BigQuery;
 
     if (authToken) {
@@ -55,6 +55,7 @@ export const createBigQueryTools = (authToken?: string) => {
         description: 'Lists all available table names in the clinical research database.',
         parameters: z.object({}),
         execute: async () => {
+            if (onLog) onLog(`\n\n> 🛠️ **Finding Schema:** Listing all tables...`);
             const tables = schema.map(t => t.tableName);
             return {
                 status: 'success',
@@ -70,6 +71,7 @@ export const createBigQueryTools = (authToken?: string) => {
             tableName: z.string().describe("The name of the table (e.g., 'patient', 'study')."),
         }),
         execute: async ({ tableName }) => {
+            if (onLog) onLog(`\n\n> 🛠️ **Finding Schema:** Reading columns for table \`${tableName}\`...`);
             const table = schema.find(t => t.tableName === tableName);
             if (!table) {
                 return { status: 'error', report: `Table '${tableName}' not found in schema definitions.` };
@@ -89,13 +91,29 @@ export const createBigQueryTools = (authToken?: string) => {
         name: 'execute_bigquery_query',
         description: 'Executes a SQL query against the BigQuery database. Use this to retrieve actual data.',
         parameters: z.object({
-            query: z.string().describe(`The Standard SQL query to execute. 
-                IMPORTANT: Always fully qualify tables using \`${projectId}.${datasetId}.TableName\`. 
+            query: z.string().describe(`The Standard SQL query to execute.
+                IMPORTANT: Always fully qualify tables using \`${projectId}.${datasetId}.TableName\`.
                 Example: SELECT count(*) FROM \`${projectId}.${datasetId}.patient\``),
         }),
-        execute: async ({ query }) => {
+        execute: async ({ query }: { query: string }) => {
+            console.log(`[BigQuery] Executing query: \n${query}`);
+            if (onLog) onLog(`\n\n> 📊 **Executing SQL:**\n\`\`\`sql\n${query}\n\`\`\`\n\n`);
+
+            // 1. Check for dangerous keywords using word boundaries to avoid false positives (e.g., 'last_updated')
+            const forbiddenParams = ['DELETE', 'DROP', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'MERGE', 'GRANT', 'REVOKE'];
+            const normalizedQuery = query.toUpperCase();
+
+            const hasForbidden = forbiddenParams.some(param => {
+                // Check if the forbidden word exists as a whole word
+                const regex = new RegExp(`\\b${param}\\b`, 'i');
+                return regex.test(query);
+            });
+
+            if (hasForbidden) {
+                throw new Error("Query contains forbidden keywords (DELETE, DROP, UPDATE, etc.). Read-only access only.");
+            }
+
             try {
-                console.log(`[BigQuery] Executing query: ${query.substring(0, 100)}...`);
                 const options = {
                     query: query,
                     location: 'US',
@@ -107,10 +125,22 @@ export const createBigQueryTools = (authToken?: string) => {
                     return { status: 'success', report: 'Query executed successfully but returned no results.' };
                 }
 
+                // 2. Redact sensitive fields (Post-processing)
+                const sensitiveKeys = ['password', 'secret', 'hash', 'salt', 'token', 'credential'];
+                const redactedRows = rows.map((row: any) => {
+                    const cleanRow: any = { ...row };
+                    for (const key in cleanRow) {
+                        if (sensitiveKeys.some(s => key.toLowerCase().includes(s))) {
+                            cleanRow[key] = '[REDACTED]';
+                        }
+                    }
+                    return cleanRow;
+                });
+
                 // Format results as JSON string for the agent to parse
                 return {
                     status: 'success',
-                    report: `Query Results (${rows.length} rows):\n${JSON.stringify(rows, null, 2)}`
+                    report: `Query Results (${redactedRows.length} rows):\n${JSON.stringify(redactedRows, null, 2)}`
                 };
             } catch (error: any) {
                 console.error('[BigQuery] Query error:', error.message);

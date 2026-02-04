@@ -3,6 +3,7 @@ import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import "@copilotkit/react-ui/styles.css";
+import "./App.css";
 
 // Get this from Google Cloud Console -> APIs & Services -> Credentials
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -23,51 +24,15 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
   });
 
   return (
-    <div style={{
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#f5f5f5",
-      fontFamily: "system-ui, sans-serif",
-    }}>
-      <div style={{
-        backgroundColor: "white",
-        padding: "40px",
-        borderRadius: "12px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-        textAlign: "center",
-        maxWidth: "400px",
-      }}>
-        <h1 style={{ margin: "0 0 8px 0", color: "#1a1a1a" }}>
-          Clinical Research Agent
-        </h1>
-        <p style={{ margin: "0 0 24px 0", color: "#666" }}>
-          Sign in to query clinical data with your authorized permissions.
+    <div className="login-container">
+      <div className="login-card glass-panel">
+        <h1 className="login-title">Clinical Research Agent</h1>
+        <p className="login-subtitle">
+          AI-powered analytics for your clinical data.<br />
+          Sign in to access secure BigQuery insights.
         </p>
 
-        <button
-          onClick={() => login()}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "12px",
-            width: "100%",
-            padding: "12px 24px",
-            fontSize: "16px",
-            fontWeight: 500,
-            color: "#1a1a1a",
-            backgroundColor: "white",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "background-color 0.2s",
-          }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f8f8f8"}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}
-        >
+        <button onClick={() => login()} className="google-btn">
           <svg width="20" height="20" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -78,12 +43,8 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
         </button>
 
         {error && (
-          <p style={{ color: "#dc2626", marginTop: "16px" }}>{error}</p>
+          <p style={{ color: "#ef4444", marginTop: "16px", fontSize: "0.9rem" }}>{error}</p>
         )}
-
-        <p style={{ marginTop: "24px", fontSize: "12px", color: "#999" }}>
-          Your queries will be executed with your BigQuery permissions.
-        </p>
       </div>
     </div>
   );
@@ -95,67 +56,62 @@ function AuthenticatedApp({ accessToken, onLogout }: { accessToken: string; onLo
       runtimeUrl="/copilotkit"
       headers={{ Authorization: `Bearer ${accessToken}` }}
     >
-      <div
-        className="copilot-chat-container"
-        style={{
-          height: "100vh",
-          width: "100vw",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "8px 16px",
-          backgroundColor: "#f8f8f8",
-          borderBottom: "1px solid #eee",
-        }}>
-          <span style={{ fontWeight: 500 }}>Clinical Research Agent</span>
-          <button
-            onClick={onLogout}
-            style={{
-              padding: "6px 12px",
-              fontSize: "14px",
-              backgroundColor: "transparent",
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              cursor: "pointer",
+      <div className="copilot-chat-container" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+        <header className="app-header glass-panel">
+          <div className="app-title">
+            <span style={{ fontSize: "1.5rem" }}>🧬</span>
+            <span>Clinical Research Agent</span>
+          </div>
+
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            <div className="status-badge">
+              <div className="status-dot"></div>
+              <span>Agent Active</span>
+            </div>
+
+            <button onClick={onLogout} className="sign-out-btn">
+              Sign Out
+            </button>
+          </div>
+        </header>
+
+        <main style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <CopilotChat
+            className="flex-1"
+            labels={{
+              title: " ",
+              initial: "Hello! I'm your Clinical Research Assistant. Ask me about patient data, studies, or findings.",
             }}
-          >
-            Sign Out
-          </button>
-        </div>
-        <CopilotChat
-          className="flex-1"
-          labels={{
-            title: "Clinical Research Agent",
-            initial: "How can I help you with the clinical data?",
-          }}
-        />
+          />
+        </main>
       </div>
     </CopilotKit>
   );
 }
 
 function App() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(() => localStorage.getItem("google_access_token"));
 
   const handleLogin = useCallback((token: string) => {
+    localStorage.setItem("google_access_token", token);
     setAccessToken(token);
   }, []);
 
   const handleLogout = useCallback(() => {
+    localStorage.removeItem("google_access_token");
     setAccessToken(null);
   }, []);
 
   if (!GOOGLE_CLIENT_ID) {
     return (
-      <div style={{ padding: 20, color: "red" }}>
-        Error: VITE_GOOGLE_CLIENT_ID environment variable is not set.
-        <br />
-        Please add it to your .env file in the client directory.
+      <div style={{ padding: 40, color: "#ef4444", textAlign: "center", background: "#1e1b4b", minHeight: "100vh" }}>
+        <div className="glass-panel" style={{ padding: 40, borderRadius: 12, display: "inline-block" }}>
+          <h2>Configuration Error</h2>
+          <p>VITE_GOOGLE_CLIENT_ID environment variable is not set.</p>
+          <code style={{ background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: 4 }}>
+            client/.env
+          </code>
+        </div>
       </div>
     );
   }

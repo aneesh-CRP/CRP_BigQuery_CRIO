@@ -42,10 +42,14 @@ process.on('unhandledRejection', (reason, promise) => {
 // --- ADK Session Management ---
 const sessionService = new InMemorySessionService();
 
-// Store runners per user token (each user gets their own authenticated runner)
-const runnerCache = new Map<string, Runner>();
+// Store runners and their log handlers
+interface CachedRunner {
+    runner: Runner;
+    setLogHandler: (handler: (msg: string) => void) => void;
+}
+const runnerCache = new Map<string, CachedRunner>();
 
-function getOrCreateRunner(authToken?: string): Runner {
+function getOrCreateRunner(authToken?: string): CachedRunner {
     const cacheKey = authToken || '__default__';
 
     if (runnerCache.has(cacheKey)) {
@@ -53,7 +57,7 @@ function getOrCreateRunner(authToken?: string): Runner {
     }
 
     // Create a new agent with the user's auth token
-    const agent = createRootAgent(authToken);
+    const { agent, setLogHandler } = createRootAgent(authToken);
 
     const runner = new Runner({
         appName: 'clinical-research-agent',
@@ -61,11 +65,16 @@ function getOrCreateRunner(authToken?: string): Runner {
         sessionService,
     });
 
-    runnerCache.set(cacheKey, runner);
+    const cached = { runner, setLogHandler };
+    runnerCache.set(cacheKey, cached);
     console.log(`[Runner] Created new runner for user (cached: ${runnerCache.size})`);
 
-    return runner;
+    return cached;
 }
+
+// Global event emitter for sub-agent logs (simple workaround)
+import { EventEmitter } from 'events';
+export const logEmitter = new EventEmitter();
 
 // --- ADK Agent Wrapper for CopilotKit ---
 class AdkAgent extends AbstractAgent {
@@ -92,7 +101,7 @@ class AdkAgent extends AbstractAgent {
         const messageId = crypto.randomUUID();
 
         // Get the runner for this user
-        const runner = getOrCreateRunner(this.authToken);
+        const { runner, setLogHandler } = getOrCreateRunner(this.authToken);
 
         // Get the user's message
         const userMessages = (input.messages || []).filter(m => m.role === 'user');
@@ -133,37 +142,138 @@ class AdkAgent extends AbstractAgent {
                 session = await sessionService.createSession({ appName, userId, sessionId: threadId });
             }
 
-            // Run the ADK agent and stream events
-            for await (const event of runner.runAsync({
-                userId,
-                sessionId: threadId,
-                newMessage,
-            })) {
-                // Extract text content from the event
-                const text = stringifyContent(event);
+            try {
+                // Setup log queue for this run
+                const logQueue: string[] = [];
 
-                if (text && event.author !== 'user') {
-                    yield {
-                        type: EventType.TEXT_MESSAGE_CONTENT,
-                        messageId,
-                        delta: text + '\n\n', // Add spacing between agent responses
-                    } as any;
-                }
+                // Signal to wake up the loop when a log arrives
+                let logSignalResolver: (() => void) | null = null;
+                let logSignal = new Promise<void>(resolve => { logSignalResolver = resolve; });
 
-                // Log tool calls for debugging
-                const functionCalls = (event as any).content?.parts?.filter((p: any) => p.functionCall);
-                if (functionCalls?.length) {
-                    for (const fc of functionCalls) {
-                        console.log(`[AdkAgent] Tool call: ${fc.functionCall.name}`);
+                // Attach the dynamic handler for this specific run
+                setLogHandler((msg) => {
+                    logQueue.push(msg);
+                    if (logSignalResolver) {
+                        logSignalResolver();
+                        // Reset signal
+                        logSignal = new Promise<void>(resolve => { logSignalResolver = resolve; });
+                    }
+                });
+
+                // Run the ADK agent and stream events
+                console.log('[AdkAgent] Starting runner.runAsync loop with real-time streaming...');
+
+                const iterator = runner.runAsync({
+                    userId,
+                    sessionId: threadId,
+                    newMessage,
+                });
+
+                // Start the first iterator promise
+                let pendingNext = iterator.next();
+
+                while (true) {
+                    // 1. Flush any pending logs FIRST (and continuously if they keep coming)
+                    while (logQueue.length > 0) {
+                        const logMsg = logQueue.shift();
+                        if (logMsg) {
+                            yield {
+                                type: EventType.TEXT_MESSAGE_CONTENT,
+                                messageId,
+                                delta: logMsg,
+                            } as any;
+                        }
+                    }
+
+                    // 2. Race: Wait for EITHER the next agent event OR a new log
+                    const result = await Promise.race([
+                        pendingNext.then(res => ({ type: 'event', res })),
+                        logSignal.then(() => ({ type: 'log', res: null }))
+                    ]);
+
+                    if (result.type === 'log') {
+                        // A new log arrived! Loop back to step 1 to flush it.
+                        // We DO NOT touch pendingNext; it's still running in the background.
+                        continue;
+                    }
+
+                    // It was an agent event
+                    const { value: event, done } = (result as any).res;
+
+                    if (done) {
+                        break;
+                    }
+
+                    // 3. Queue the NEXT event promise immediately
+                    pendingNext = iterator.next();
+
+                    // 4. Process the received event
+                    console.log(`[AdkAgent] Received event: ${JSON.stringify(event, null, 2)}`);
+
+                    // Extract text content from the event
+                    const text = stringifyContent(event);
+                    console.log(`[AdkAgent] stringifyContent result: "${text}"`);
+
+                    if (text && event.author !== 'user') {
+                        yield {
+                            type: EventType.TEXT_MESSAGE_CONTENT,
+                            messageId,
+                            delta: text + '\n\n', // Add spacing between agent responses
+                        } as any;
+                    }
+
+                    // Handle tool calls - Emit them as formatted text/markdown
+                    const functionCalls = (event as any).content?.parts?.filter((p: any) => p.functionCall);
+                    if (functionCalls?.length) {
+                        for (const fc of functionCalls) {
+                            const toolName = fc.functionCall.name;
+                            const args = fc.functionCall.args;
+                            console.log(`[AdkAgent] Tool call: ${toolName}`);
+
+                            let toolMessage = '';
+                            if (toolName === 'execute_bigquery_query') {
+                                const query = args?.query || 'No query provided';
+                                toolMessage = `\n\n> 📊 **Executing SQL:**\n\`\`\`sql\n${query}\n\`\`\`\n\n`;
+                            } else if (toolName === 'list_tables') {
+                                toolMessage = `\n\n> 🔎 **Listing Tables** passed...\n\n`;
+                            } else if (toolName === 'get_table_schema') {
+                                toolMessage = `\n\n> 📋 **Checking Schema:** \`${args?.tableName}\`\n\n`;
+                            } else {
+                                toolMessage = `\n\n> 🛠️ **Using Tool:** \`${toolName}\`\n\n`;
+                            }
+
+                            // Stream the tool call notification to the chat
+                            yield {
+                                type: EventType.TEXT_MESSAGE_CONTENT,
+                                messageId,
+                                delta: toolMessage,
+                            } as any;
+                        }
                     }
                 }
+
+                // Flush any remaining logs after loop
+                while (logQueue.length > 0) {
+                    const logMsg = logQueue.shift();
+                    if (logMsg) {
+                        yield {
+                            type: EventType.TEXT_MESSAGE_CONTENT,
+                            messageId,
+                            delta: logMsg,
+                        } as any;
+                    }
+                }
+
+                console.log('[AdkAgent] Finished runner.runAsync loop normally.');
+            } catch (error) {
+                console.error('[AdkAgent] Error in runner loop:', error);
             }
         } catch (error: any) {
             console.error("[AdkAgent] Error in runner.runAsync:", error);
             yield {
                 type: EventType.TEXT_MESSAGE_CONTENT,
                 messageId,
-                delta: `\n\nError executing agent: ${error.message}`,
+                delta: `\n\n❌ **Error executing agent:** ${error.message}\n\n`,
             } as any;
         }
 

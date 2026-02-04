@@ -1,42 +1,458 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+:root {
+  --bg-gradient-start: #0f172a;
+  --bg-gradient-end: #1e293b;
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --primary-color: #3b82f6;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-color: #60a5fa;
+  --success-color: #10b981;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* --- Layout Utilities --- */
+.flex-1 {
+  flex: 1;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* --- Glassmorphism Utilities --- */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+/* --- CopilotKit Theme Overrides --- */
+.copilot-chat-container {
+  --copilot-kit-primary-color: var(--primary-color);
+  --copilot-kit-background-color: transparent;
+  --copilot-kit-text-color: var(--text-primary);
+  --copilot-kit-secondary-text-color: var(--text-secondary);
+  --copilot-kit-border-color: var(--glass-border);
+  --copilot-kit-muted-text-color: var(--text-secondary);
+}
+
+/* Force Text Colors */
+.copilotKitMessage,
+.copilotKitAssistantMessage,
+.copilotKitUserMessage,
+.copilotKitMarkdown,
+.copilotKitMarkdownElement,
+.copilotKitResponse,
+.copilotKitInput,
+.copilot-kit-chat,
+.copilot-kit-message,
+.copilot-kit-input,
+.copilot-kit-response,
+.copilot-kit-markdown {
+  color: var(--text-primary) !important;
+}
+
+/* --- Premium User Message Bubbles --- */
+.copilotKitUserMessage,
+.copilot-kit-user-message {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  border: none !important;
+  border-radius: 18px 18px 4px 18px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+  color: white !important;
+}
+
+/* --- Premium Code Blocks --- */
+.copilotKitMarkdown pre,
+.copilot-kit-markdown pre {
+  background: rgba(13, 17, 23, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  border-radius: 12px !important;
+  margin: 16px 0 !important;
+  padding: 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  position: relative;
+  overflow: hidden !important;
+}
+
+/* Subtle header accent for code blocks */
+.copilotKitMarkdown pre::before,
+.copilot-kit-markdown pre::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-color), transparent);
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.6;
+}
+
+.copilotKitMarkdown code,
+.copilot-kit-markdown code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 0.9em !important;
+}
+
+/* --- "Active Process" Log cards (Solving the disappearing loader) --- */
+.copilotKitMarkdown blockquote,
+.copilot-kit-markdown blockquote {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.6), rgba(30, 41, 59, 0.3)) !important;
+  border: 1px solid rgba(96, 165, 250, 0.2) !important;
+  border-left: 4px solid var(--accent-color) !important;
+  border-radius: 8px !important;
+  padding: 14px 20px !important;
+  margin: 16px 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  position: relative;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.85rem !important;
+  color: #bfdbfe !important;
+}
+
+/* The "Shimmer" Animation to indicate active processing */
+.copilotKitMarkdown>blockquote:last-child::after,
+.copilot-kit-markdown>blockquote:last-child::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(96, 165, 250, 0.1),
+      transparent);
+  animation: loadingShimmer 2.5s infinite;
+}
+
+@keyframes loadingShimmer {
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 200%;
+  }
+}
+
+/* Style the inner code elements of logs (Tool Name) */
+.copilotKitMarkdown blockquote code,
+.copilot-kit-markdown blockquote code {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Log Text Alignment */
+.copilotKitMarkdown blockquote p,
+.copilot-kit-markdown blockquote p {
+  margin: 0 !important;
+  color: #bfdbfe !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Inline Code Styling --- */
+.copilotKitMarkdown p>code,
+.copilot-kit-markdown p>code {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* --- Code Block Buttons (Copy/Download) --- */
+.copilotKitMarkdown pre button,
+.copilot-kit-markdown pre button {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+  padding: 4px 8px !important;
+}
+
+.copilotKitMarkdown pre button:hover,
+.copilot-kit-markdown pre button:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* --- Fix SVG Icons in Buttons --- */
+.copilotKitMarkdown pre button svg,
+.copilot-kit-markdown pre button svg {
+  fill: currentColor !important;
+  color: currentColor !important;
+}
+
+
+/* --- Input Area Overrides --- */
+/* --- Input Area Overrides --- */
+
+/* 1. The Container (Wrapper Div) */
+.copilotKitInput {
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  /* Glass Background */
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+  margin: 0 auto 20px auto !important;
+  /* Centered with bottom spacing */
+  width: 92% !important;
+  /* Constrained width */
+  max-width: 900px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  box-sizing: border-box !important;
+  padding: 8px !important;
+  min-height: auto !important;
+}
+
+/* 2. The Textarea (Inner Input) */
+.copilotKitInput textarea {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  width: 100% !important;
+  padding: 8px 12px !important;
+  resize: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+/* Clean up potentially conflicting selectors by resetting them */
+.copilot-chat-container textarea,
+.copilot-chat-container input[type="text"],
+.copilot-kit-message-input {
+  /* No-op: rely on specific .copilotKitInput textarea rule above */
+}
+
+/* Placeholder styling */
+.copilotKitInput textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* --- Suspend Interactions during Loading --- */
+/* When the chat is loading (agent working), disable the input area */
+.copilotKitLoading .copilotKitInput,
+.copilot-chat-container:has(.copilotKitLoading) textarea,
+.copilot-chat-container:has(.copilotKitLoading) input {
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Also hide/disable suggestion buttons if they exist */
+.copilotKitLoading .copilotKitSuggestions,
+.copilotKitLoading .copilot-kit-suggestions {
+  display: none !important;
+}
+
+/* --- Loading Indicator / Ellipsis Fix --- */
+.copilotKitMessage .loader,
+.copilotKitMessage .dot,
+div[class*="loader"],
+div[class*="dot"] {
+  background-color: white !important;
+  fill: white !important;
+}
+
+.copilotKitMessage svg,
+.copilotKitMessageBubble svg {
+  fill: var(--text-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.copilotKitLoading span,
+.copilotKitLoading div {
+  background-color: var(--text-primary) !important;
+}
+
+/* --- Login Screen & Components --- */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top right, #1e1b4b, transparent 40%),
+    radial-gradient(circle at bottom left, #0f172a, transparent 40%),
+    linear-gradient(135deg, #020617, #1e293b);
+}
+
+.login-card {
+  padding: 3rem;
+  border-radius: 24px;
   text-align: center;
+  max-width: 440px;
+  width: 100%;
+  animation: fadeIn 0.8s ease-out;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.login-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-@keyframes logo-spin {
+.login-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.google-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Header --- */
+.app-header {
+  height: 64px;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.app-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulse 2s infinite;
+}
+
+.sign-out-btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sign-out-btn:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(20px);
   }
+
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
   }
 }
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+/* --- Hide CopilotKit Branding & Announcements --- */
+.copilotKitBranding,
+.copilot-kit-branding,
+a[href*="copilotkit.ai"],
+div[class*="copilotKitBranding"],
+div[class*="copilotKitToast"],
+div[class*="copilot-kit-toast"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
