@@ -19,22 +19,17 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/google-vertex": "^4.0.37",
     "@copilotkit/runtime": "^1.51.2",
     "@copilotkit/shared": "^1.51.2",
     "@google-cloud/bigquery": "^8.1.1",
     "@google/adk": "^0.2.4",
     "@google/adk-devtools": "^0.2.4",
     "@google/generative-ai": "^0.24.1",
-    "@langchain/core": "^1.1.17",
-    "@langchain/google-vertexai": "^0.2.18",
-    "@langchain/langgraph": "^1.1.2",
     "@types/express": "^5.0.6",
     "@types/node": "^25.1.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "google-auth-library": "^10.5.0",
-    "langchain": "^1.2.15",
     "lodash": "^4.17.23",
     "reflect-metadata": "^0.2.2",
     "zod": "^3.25.76"
