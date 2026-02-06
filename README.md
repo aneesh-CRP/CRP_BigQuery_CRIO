@@ -173,14 +173,74 @@ npm run cli
 
 ---
 
-## Deployment
+## Deployment (Cloud Run)
+
+### Prerequisites
+
+1. Authenticate Docker with Artifact Registry (one-time):
 
 ```bash
-# Build and push Docker image
-docker build -t gcr.io/YOUR_PROJECT/agent:latest .
-docker push gcr.io/YOUR_PROJECT/agent:latest
-
-# Deploy via Terraform
-cd infrastructure
-terraform apply
+gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
+
+2. Create an Artifact Registry repository (one-time):
+
+```bash
+gcloud artifacts repositories create clinical-research-agent \
+    --repository-format=docker \
+    --location=us-central1 \
+    --project=crio-468120
+```
+
+3. Grant the Cloud Run service account Vertex AI access (one-time):
+
+```bash
+gcloud projects add-iam-policy-binding crio-468120 \
+    --member="serviceAccount:YOUR_SERVICE_ACCOUNT_EMAIL" \
+    --role="roles/aiplatform.user"
+```
+
+### Build and Push Images
+
+> **Note:** Cloud Run requires `linux/amd64` images. If you're on Apple Silicon (M1/M2/M3), you must include the `--platform` flag or the container will fail to start.
+
+```bash
+# Backend (from project root)
+docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/backend:latest .
+docker push us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/backend:latest
+
+# Frontend (from project root)
+docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/frontend:latest ./client
+docker push us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/frontend:latest
+```
+
+### Deploy to Cloud Run
+
+```bash
+# 1. Deploy backend
+gcloud run deploy clinical-research-backend \
+    --image=us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/backend:latest \
+    --region=us-central1 \
+    --project=crio-468120 \
+    --set-env-vars="GOOGLE_CLOUD_PROJECT=crio-468120,GOOGLE_CLOUD_LOCATION=us-central1,GOOGLE_GENAI_USE_VERTEXAI=1" \
+    --allow-unauthenticated \
+    --port=8080 \
+    --memory=512Mi
+
+# 2. Deploy frontend (replace BACKEND_URL with the URL from step 1)
+gcloud run deploy clinical-research-frontend \
+    --image=us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/frontend:latest \
+    --region=us-central1 \
+    --project=crio-468120 \
+    --set-env-vars="BACKEND_URL=https://clinical-research-backend-xxxxx-uc.a.run.app" \
+    --allow-unauthenticated \
+    --port=8080 \
+    --memory=256Mi
+```
+
+### Post-Deploy: Update OAuth Origins
+
+Add the frontend Cloud Run URL to your OAuth client in [Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials):
+
+- **Authorized JavaScript origins**: `https://your-frontend-url.a.run.app`
+- **Authorized redirect URIs**: `https://your-frontend-url.a.run.app`
