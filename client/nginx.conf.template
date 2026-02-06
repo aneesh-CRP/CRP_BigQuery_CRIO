@@ -1,12 +1,12 @@
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
 
     root /usr/share/nginx/html;
     index index.html;
 
     location /copilotkit {
-        proxy_pass http://backend:8080/copilotkit;
+        proxy_pass ${BACKEND_URL}/copilotkit;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
