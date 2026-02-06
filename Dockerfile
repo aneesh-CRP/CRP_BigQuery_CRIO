@@ -1,22 +1,23 @@
-# Use official Node.js image
-FROM node:20-slim
+FROM node:20-alpine AS builder
+WORKDIR /app
 
-# Create app directory
-WORKDIR /usr/src/app
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install app dependencies
-COPY package*.json ./
-RUN npm install
-
-# Bundle app source
 COPY . .
 
-# Compile TypeScript (if there's a build script, otherwise run ts-node directly)
-# Assuming typical setup:
-# RUN npm run build 
+RUN npm run build
 
-# Expose port (Cloud Run defaults to 8080)
+FROM node:20-alpine
+WORKDIR /app
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/config.json ./config.json
+COPY --from=builder /app/schema.json ./schema.json
+
+ENV NODE_ENV=production
 EXPOSE 8080
 
-# Command to run the app (Requires a server.ts entrypoint which we still need to make!)
-CMD [ "npx", "ts-node", "server.ts" ]
+CMD ["node", "dist/server.js"]

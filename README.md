@@ -82,11 +82,31 @@ VITE_GOOGLE_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
 4. Add **Authorized redirect URIs**: `http://localhost:5173`
 5. Copy Client ID to `client/.env`
 
-### 4. Run Locally
+### 4. Authenticate with Google Cloud
+
+Vertex AI requires application default credentials. Run these once (and again whenever your credentials expire):
 
 ```bash
-# Terminal 1: Backend
-npm start
+gcloud auth login
+gcloud auth application-default login
+gcloud auth application-default set-quota-project crio-468120
+```
+
+### 5. Run Locally
+
+#### Option A: Docker Compose (recommended)
+
+```bash
+docker-compose up --build
+```
+
+Open http://localhost:5173 and sign in with Google.
+
+#### Option B: Without Docker
+
+```bash
+# Terminal 1: Backend (development)
+npm run dev
 
 # Terminal 2: Frontend
 cd client && npm run dev
@@ -144,6 +164,12 @@ npx tsc --noEmit
 # Run ADK dev tools (CLI mode)
 npm run cli
 ```
+
+---
+
+**Note:**  
+- Use `npm run dev` for backend development (hot reload, TypeScript source).
+- Use `npm start` for production (runs compiled JavaScript, e.g. in Docker/Cloud Run).
 
 ---
 

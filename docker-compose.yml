@@ -1,0 +1,24 @@
+services:
+  backend:
+    env_file:
+      .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - $HOME/.config/gcloud/application_default_credentials.json:/app/.gcloud-credentials.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/.gcloud-credentials.json
+
+  frontend:
+    env_file:
+      .env
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

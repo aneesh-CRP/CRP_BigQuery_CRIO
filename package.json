@@ -7,7 +7,9 @@
   "scripts": {
     "web": "npx @google/adk-devtools web",
     "cli": "npx @google/adk-devtools run agent.ts",
-    "start": "tsx server.mts"
+    "build": "tsup server.mts --format esm --outDir dist --splitting --clean",
+    "start": "node dist/server.js",
+    "dev": "tsx server.mts"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +17,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
