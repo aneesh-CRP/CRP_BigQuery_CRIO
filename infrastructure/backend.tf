@@ -1,9 +1,6 @@
-# Configure GCS backend for Terraform state
-# This stores state in an encrypted, versioned GCS bucket
-
 terraform {
   backend "gcs" {
-    bucket = "crio-terraform-state"  # Create this bucket first
+    bucket = "crio-terraform-state"
     prefix = "bigquery-agent"
   }
 }

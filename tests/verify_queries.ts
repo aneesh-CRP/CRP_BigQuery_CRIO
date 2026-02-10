@@ -1,10 +1,21 @@
-import { createBigQueryTools } from '../tools/bigquery.ts';
+// NOTE: This test file requires a valid auth token to run.
+// In CI/CD, you would mock the BigQuery client or use a service account.
+// For local testing, set TEST_AUTH_TOKEN environment variable.
 
-const { executeBigQuery, listTables, getTableSchema } = createBigQueryTools();
-import { rootAgent } from '../agent.ts';
+import { createBigQueryTools } from '../tools/bigquery.ts';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const testToken = process.env.TEST_AUTH_TOKEN;
+if (!testToken) {
+    console.error('⚠️  TEST_AUTH_TOKEN environment variable not set.');
+    console.error('   Export a valid OAuth token to run these tests:');
+    console.error('   export TEST_AUTH_TOKEN=$(gcloud auth print-access-token)');
+    process.exit(1);
+}
+
+const { executeBigQuery, listTables, getTableSchema } = createBigQueryTools(testToken);
 
 const complexQueries = [
     {

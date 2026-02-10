@@ -1,67 +1,226 @@
 terraform {
+  required_version = ">= 1.0.0"
   required_providers {
     google = {
-      source = "hashicorp/google"
-      version = "4.51.0"
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
 
 provider "google" {
-  project = "crio-468120"
-  region  = "us-central1"
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
 }
 
 data "google_project" "project" {
-  project_id = "crio-468120"
+  project_id = var.project_id
 }
 
-resource "google_project_service" "run_api" {
-  service            = "run.googleapis.com"
+# ============================================================================
+# API Services
+# ============================================================================
+
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "run.googleapis.com",
+    "aiplatform.googleapis.com",
+    "sqladmin.googleapis.com",
+    "compute.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "secretmanager.googleapis.com",
+    "vpcaccess.googleapis.com",
+    "artifactregistry.googleapis.com",
+  ])
+  service            = each.value
   disable_on_destroy = false
 }
 
-resource "google_project_service" "ai_api" {
-  service            = "aiplatform.googleapis.com"
-  disable_on_destroy = false
-}
+# ============================================================================
+# Artifact Registry
+# ============================================================================
 
-resource "google_project_service" "iap_api" {
-  service            = "iap.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "artifactregistry_api" {
-  service            = "artifactregistry.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_artifact_registry_repository" "clinical_research_agent" {
-  location      = "us-central1"
-  repository_id = "clinical-research-agent"
+resource "google_artifact_registry_repository" "agent" {
+  location      = var.region
+  repository_id = var.app_name
   format        = "DOCKER"
-  description   = "Docker images for the Clinical Research Agent"
+  description   = "Docker images for ${var.app_name}"
 
-  depends_on = [google_project_service.artifactregistry_api]
+  depends_on = [google_project_service.apis]
 }
 
-resource "google_cloud_run_v2_service" "backend" {
-  name     = "clinical-research-backend"
-  location = "us-central1"
+# ============================================================================
+# Networking - VPC for Private Cloud SQL Access
+# ============================================================================
+
+resource "google_compute_network" "vpc" {
+  name                    = "${var.app_name}-vpc"
+  auto_create_subnetworks = false
+  depends_on              = [google_project_service.apis]
+}
+
+resource "google_compute_subnetwork" "subnet" {
+  name          = "${var.app_name}-subnet"
+  ip_cidr_range = "10.0.0.0/24"
+  region        = var.region
+  network       = google_compute_network.vpc.id
+}
+
+# Private IP range for Cloud SQL
+resource "google_compute_global_address" "private_ip_range" {
+  name          = "${var.app_name}-private-ip"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.vpc.id
+}
+
+# Private connection to Cloud SQL
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = google_compute_network.vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
+  depends_on              = [google_project_service.apis]
+}
+
+# VPC Connector for Cloud Run to access Cloud SQL
+resource "google_vpc_access_connector" "connector" {
+  name          = "${var.app_name}-c"
+  region        = var.region
+  network       = google_compute_network.vpc.name
+  ip_cidr_range = "10.8.0.0/28"
+  depends_on    = [google_project_service.apis]
+}
+
+# ============================================================================
+# Cloud SQL - PostgreSQL for Chat History & Sessions
+# ============================================================================
+
+resource "random_password" "db_password" {
+  length  = 24
+  special = false
+}
+
+resource "google_sql_database_instance" "chat_db" {
+  name             = "${var.app_name}-db-${var.environment}"
+  database_version = "POSTGRES_15"
+  region           = var.region
+
+  settings {
+    tier = var.db_tier
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.vpc.id
+    }
+
+    backup_configuration {
+      enabled = var.environment == "prod" ? true : false
+    }
+  }
+
+  deletion_protection = var.environment == "prod" ? true : false
+  depends_on          = [google_service_networking_connection.private_vpc_connection]
+}
+
+resource "google_sql_database" "chat_history" {
+  name     = var.db_name
+  instance = google_sql_database_instance.chat_db.name
+}
+
+resource "google_sql_user" "app_user" {
+  name     = var.db_user
+  instance = google_sql_database_instance.chat_db.name
+  password = random_password.db_password.result
+}
+
+# ============================================================================
+# Secret Manager - Database URL
+# ============================================================================
+
+resource "google_secret_manager_secret" "database_url" {
+  secret_id = "${var.app_name}-database-url"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret_version" "database_url" {
+  secret      = google_secret_manager_secret.database_url.id
+  secret_data = "postgresql://${google_sql_user.app_user.name}:${random_password.db_password.result}@${google_sql_database_instance.chat_db.private_ip_address}:5432/${google_sql_database.chat_history.name}"
+}
+
+# Grant Cloud Run service account access to secret
+resource "google_secret_manager_secret_iam_member" "cloud_run_access" {
+  secret_id = google_secret_manager_secret.database_url.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_project_service_identity.cloud_run.email}"
+}
+
+resource "google_project_service_identity" "cloud_run" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "run.googleapis.com"
+}
+
+# ============================================================================
+# Cloud Run - Single service (API + frontend)
+# ============================================================================
+
+locals {
+  artifact_registry = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.agent.repository_id}"
+  app_image         = var.app_image != "" ? var.app_image : "${local.artifact_registry}/app:v7"
+}
+
+resource "google_cloud_run_v2_service" "app" {
+  name     = var.app_name
+  location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
+    # Scale-to-zero with 1 min instance for low-latency
+    scaling {
+      min_instance_count = 0
+      max_instance_count = var.max_instances
+    }
+
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
-      image = "us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/backend:latest"
+      image = local.app_image
+
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
 
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
-        value = "crio-468120"
+        value = var.project_id
       }
 
       env {
         name  = "GOOGLE_CLOUD_LOCATION"
-        value = "us-central1"
+        value = var.region
       }
 
       env {
@@ -69,34 +228,34 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "1"
       }
 
-      ports {
-        container_port = 8080
+      env {
+        name  = "BIGQUERY_PROJECT_ID"
+        value = var.bigquery_project_id != "" ? var.bigquery_project_id : var.project_id
       }
-
-      resources {
-        limits = {
-          cpu    = "1000m"
-          memory = "512Mi"
-        }
-      }
-    }
-  }
-
-  depends_on = [google_project_service.run_api]
-}
-
-resource "google_cloud_run_v2_service" "frontend" {
-  name     = "clinical-research-frontend"
-  location = "us-central1"
-  ingress  = "INGRESS_TRAFFIC_ALL"
-
-  template {
-    containers {
-      image = "us-central1-docker.pkg.dev/crio-468120/clinical-research-agent/frontend:latest"
 
       env {
-        name  = "BACKEND_URL"
-        value = google_cloud_run_v2_service.backend.uri
+        name  = "BIGQUERY_DATASET_ID"
+        value = var.bigquery_dataset_id
+      }
+
+      env {
+        name  = "BIGQUERY_BILLING_PROJECT"
+        value = var.bigquery_billing_project != "" ? var.bigquery_billing_project : var.project_id
+      }
+
+      env {
+        name  = "BIGQUERY_LOCATION"
+        value = var.bigquery_location
+      }
+
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
       }
 
       ports {
@@ -105,67 +264,80 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       resources {
         limits = {
-          cpu    = "1000m"
-          memory = "512Mi"
+          cpu    = var.container_cpu
+          memory = var.container_memory
         }
+      }
+
+      # Startup probe
+      startup_probe {
+        http_get {
+          path = "/health"
+        }
+        initial_delay_seconds = 15
+        period_seconds        = 10
+        failure_threshold     = 6
+        timeout_seconds       = 5
+      }
+
+      # Liveness probe
+      liveness_probe {
+        http_get {
+          path = "/health"
+        }
+        period_seconds  = 30
+        timeout_seconds = 3
       }
     }
   }
 
-  depends_on = [google_project_service.run_api]
-}
-
-resource "google_cloud_run_service_iam_binding" "frontend_public" {
-  location = google_cloud_run_v2_service.frontend.location
-  service  = google_cloud_run_v2_service.frontend.name
-  role     = "roles/run.invoker"
-  members = [
-    "allUsers",
+  depends_on = [
+    google_project_service.apis,
+    google_secret_manager_secret_version.database_url,
   ]
 }
 
-# IAM - Backend accessible only by the frontend (and allUsers for now)
-# TODO: Lock down to only the frontend service account
-resource "google_cloud_run_service_iam_binding" "backend_public" {
-  location = google_cloud_run_v2_service.backend.location
-  service  = google_cloud_run_v2_service.backend.name
+# ============================================================================
+# IAM
+# ============================================================================
+
+# Control who can invoke the Cloud Run service.
+# Set allowed_invokers = ["allUsers"] for public access,
+# or specify individual users/groups for restricted access.
+resource "google_cloud_run_service_iam_binding" "app_invoker" {
+  location = google_cloud_run_v2_service.app.location
+  service  = google_cloud_run_v2_service.app.name
   role     = "roles/run.invoker"
-  members = [
-    "allUsers",
-  ]
+  members  = var.allowed_invokers
 }
 
+# Grant Vertex AI access to the default compute service account
 resource "google_project_iam_member" "vertex_ai_user" {
-  project = "crio-468120"
+  project = var.project_id
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
-resource "google_iap_client" "web_client" {
-  display_name = "Clinical Research Agent Web Client"
-  brand        = "projects/142405845774/brands/142405845774"
+# ============================================================================
+# Outputs
+# ============================================================================
 
-  depends_on = [google_project_service.iap_api]
+output "app_url" {
+  value       = google_cloud_run_v2_service.app.uri
+  description = "Cloud Run service URL"
 }
 
-output "backend_url" {
-  value       = google_cloud_run_v2_service.backend.uri
-  description = "Backend Cloud Run service URL"
+output "artifact_registry" {
+  value       = local.artifact_registry
+  description = "Artifact Registry path for docker push"
 }
 
-output "frontend_url" {
-  value       = google_cloud_run_v2_service.frontend.uri
-  description = "Frontend Cloud Run service URL"
+output "database_instance" {
+  value       = google_sql_database_instance.chat_db.name
+  description = "Cloud SQL instance name"
 }
 
-output "oauth_client_id" {
-  value       = google_iap_client.web_client.client_id
-  description = "OAuth 2.0 Client ID for the web application"
+output "database_connection_name" {
+  value       = google_sql_database_instance.chat_db.connection_name
+  description = "Cloud SQL connection name for Cloud SQL Proxy"
 }
-
-output "oauth_client_secret" {
-  value       = google_iap_client.web_client.secret
-  sensitive   = true
-  description = "OAuth 2.0 Client Secret (keep this secure!)"
-}
-

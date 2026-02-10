@@ -1,0 +1,25 @@
+{
+    "name": "ag-ui-adk",
+    "version": "0.1.0",
+    "description": "Adapter for using Google ADK agents with CopilotKit via AG-UI protocol",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "clean": "rm -rf dist"
+    },
+    "peerDependencies": {
+        "@google/adk": "^0.2.4",
+        "@ag-ui/client": "^0.0.42",
+        "rxjs": "^7.8.1",
+        "google-auth-library": "^9.6.3"
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3",
+        "@types/node": "^20.11.24",
+        "@google/adk": "^0.2.4",
+        "@ag-ui/client": "^0.0.42",
+        "rxjs": "^7.8.1",
+        "google-auth-library": "^9.6.3"
+    }
+}

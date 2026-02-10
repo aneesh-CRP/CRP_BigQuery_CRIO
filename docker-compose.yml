@@ -1,24 +1,41 @@
 services:
-  backend:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bigquery_agent_db
+    environment:
+      POSTGRES_DB: chat_history
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
     env_file:
-      .env
+      - .env
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     ports:
       - "8080:8080"
     volumes:
       - $HOME/.config/gcloud/application_default_credentials.json:/app/.gcloud-credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/.gcloud-credentials.json
-
-  frontend:
-    env_file:
-      .env
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    ports:
-      - "5173:80"
+      - DATABASE_URL=postgresql://user:password@postgres:5432/chat_history
+      - NODE_ENV=production
     depends_on:
-      - backend
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

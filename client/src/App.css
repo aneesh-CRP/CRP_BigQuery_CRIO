@@ -27,6 +27,17 @@ body {
   flex-direction: column !important;
 }
 
+/* --- HARDENED LAYOUT CONSTRAINTS (Browser Verified) --- */
+/* Prevent flex items from expanding beyond viewport */
+main,
+.copilotKitMessages,
+.copilotKitMessagesContainer,
+.copilotKitMessage,
+.copilotKitMarkdown,
+.copilot-kit-markdown {
+  min-width: 0 !important;
+}
+
 /* --- Glassmorphism Utilities --- */
 .glass-panel {
   background: var(--glass-bg);
@@ -53,6 +64,36 @@ body {
   --copilot-kit-muted-text-color: var(--text-secondary);
 }
 
+/* Add breathing room so messages don't hug screen edges */
+.copilot-chat-container .copilotKitMessages,
+.copilot-chat-container .copilotKitMessagesContainer,
+.copilot-chat-container .copilot-kit-messages,
+.copilot-chat-container .copilot-kit-messages-container {
+  padding: 18px clamp(16px, 4vw, 32px) 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* Constrain bubble width and keep alignment */
+.copilot-chat-container .copilotKitMessage,
+.copilot-chat-container .copilotKitAssistantMessage,
+.copilot-chat-container .copilotKitUserMessage,
+.copilot-chat-container .copilot-kit-message,
+.copilot-chat-container .copilot-kit-assistant-message,
+.copilot-chat-container .copilot-kit-user-message {
+  max-width: min(760px, 100%) !important;
+  width: fit-content !important;
+}
+
+.copilot-chat-container .copilotKitUserMessage,
+.copilot-chat-container .copilot-kit-user-message {
+  margin-left: auto !important;
+}
+
+.copilot-chat-container .copilotKitAssistantMessage,
+.copilot-chat-container .copilot-kit-assistant-message {
+  margin-right: auto !important;
+}
+
 /* Force Text Colors */
 .copilotKitMessage,
 .copilotKitAssistantMessage,
@@ -67,6 +108,15 @@ body {
 .copilot-kit-response,
 .copilot-kit-markdown {
   color: var(--text-primary) !important;
+}
+
+/* Enforce width constraints on Markdown container */
+.copilotKitMarkdown,
+.copilot-kit-markdown {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  /* Prevent container from forcing scroll */
+  display: block;
 }
 
 /* --- Premium User Message Bubbles --- */
@@ -92,7 +142,26 @@ body {
   padding: 16px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
   position: relative;
-  overflow: hidden !important;
+  overflow-x: auto !important;
+  max-width: 100% !important;
+
+  /* Browser Verified Fix: Override inline styles on nested children */
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Force children (div, code) to respect wrapping, overcoming inline styles */
+.copilotkit-markdown pre *,
+.copilotKitMarkdown pre *,
+.copilot-kit-markdown pre *,
+.copilotKitCodeBlock,
+.copilotKitCodeBlock div,
+.copilotKitCodeBlock code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  max-width: 100% !important;
 }
 
 /* Subtle header accent for code blocks */
@@ -125,8 +194,11 @@ body {
   padding: 14px 20px !important;
   margin: 16px 0 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
   position: relative;
-  overflow: hidden;
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 0.85rem !important;
   color: #bfdbfe !important;
@@ -362,6 +434,52 @@ div[class*="dot"] {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* --- Chat Placeholder --- */
+.chat-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.chat-placeholder-card {
+  max-width: 520px;
+  width: 100%;
+  padding: 28px 30px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.chat-placeholder-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.chat-placeholder-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 18px;
+}
+
+.chat-placeholder-button {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-placeholder-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
+}
+
 /* --- Header --- */
 .app-header {
   height: 64px;
@@ -455,4 +573,185 @@ div[class*="copilot-kit-toast"] {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+/* --- Sidebar Styles --- */
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  color: white;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  border-radius: 6px;
+}
+
+.brand-text {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.new-chat-btn {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.new-chat-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+
+.history-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #94a3b8;
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+.history-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.user-info {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* --- Tool Call Cards --- */
+.tool-call-card {
+  border: 1px solid rgba(77, 132, 233, 0.45);
+  background: rgba(15, 25, 45, 0.6);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 0 12px 0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tool-call-label {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.tool-call-name {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(77, 132, 233, 0.2);
+  color: #d8e6ff;
+}
+
+.tool-call-args {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(9, 15, 28, 0.85);
+  color: #dfe9ff;
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
+.tool-call-details {
+  margin: 0;
+}
+
+.tool-call-summary {
+  cursor: pointer;
+  color: rgba(226, 236, 255, 0.85);
+  font-size: 12px;
+  margin-bottom: 8px;
+  list-style: none;
+}
+
+.tool-call-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tool-call-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s ease;
+}
+
+.tool-call-details[open] .tool-call-summary::before {
+  transform: rotate(90deg);
+}
+
+.tool-call-empty {
+  font-size: 12px;
+  color: rgba(226, 236, 255, 0.6);
 }

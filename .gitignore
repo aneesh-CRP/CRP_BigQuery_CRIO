@@ -18,6 +18,7 @@ server.mjs
 infrastructure/.terraform/
 *.tfstate
 *.tfstate.backup
+*.tfvars
 .terraform.lock.hcl
 
 # Logs
@@ -35,4 +36,9 @@ debug-adk.ts
 # IDE
 .vscode/
 .idea/
-tfplan
+tfplan*
+
+# Terraform plans may contain sensitive resource information
+*.plan
+
+/generated/prisma

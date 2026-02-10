@@ -1,6 +1,37 @@
 {
-    "projectId": "crio-468120",
-    "datasetId": "crio_data",
-    "location": "us-central1",
-    "appName": "clinical-research-agent"
+    "gcp": {
+        "projectId": "your-project-id",
+        "location": "us-central1"
+    },
+    "bigquery": {
+        "datasetId": "your_dataset"
+    },
+    "branding": {
+        "appName": "BigQuery Agent",
+        "appDescription": "AI-powered analytics for your data",
+        "sidebarTitle": "Data Assistant",
+        "chatTitle": "Data Assistant",
+        "chatInitialMessage": "Hello! I'm your Data Assistant. Ask me questions about your data."
+    },
+    "agent": {
+        "model": "gemini-2.5-flash",
+        "orchestrator": {
+            "name": "data_orchestrator",
+            "role": "Lead Data Analyst",
+            "domain": "your business data",
+            "specialistDescription": "specialist sub-agent for SQL queries"
+        },
+        "sqlSpecialist": {
+            "name": "sql_specialist",
+            "sensitiveColumns": [
+                "password",
+                "secret",
+                "hash",
+                "salt",
+                "token",
+                "credential"
+            ],
+            "piiWarning": "Never output personally identifiable information (names, addresses, IDs) unless explicitly authorized."
+        }
+    }
 }

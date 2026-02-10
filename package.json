@@ -1,25 +1,42 @@
 {
   "name": "bigquery-agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI-powered BigQuery analytics agent",
   "main": "agent.ts",
   "type": "module",
+  "workspaces": [
+    "ag-ui-adk"
+  ],
   "scripts": {
     "web": "npx @google/adk-devtools web",
     "cli": "npx @google/adk-devtools run agent.ts",
-    "build": "tsup server.mts --format esm --outDir dist --splitting --clean",
+    "build": "cd ag-ui-adk && npm run build && cd .. && tsup server.mts --format esm --outDir dist --splitting --clean",
+    "build:client": "cd client && npm ci && npm run build",
     "start": "node dist/server.js",
-    "dev": "tsx server.mts"
+    "dev": "tsx server.mts",
+    "db:generate": "npx prisma generate",
+    "db:migrate": "npx prisma migrate deploy",
+    "db:migrate:dev": "npx prisma migrate dev",
+    "docker:build": "docker build -t bigquery-agent .",
+    "deploy:push": "docker tag bigquery-agent $ARTIFACT_REGISTRY/app:latest && docker push $ARTIFACT_REGISTRY/app:latest",
+    "deploy": "gcloud run deploy bigquery-agent --image $ARTIFACT_REGISTRY/app:latest --region us-central1",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-rate-limit": "^5.1.3",
+    "@types/node": "^25.2.0",
+    "prisma": "^6.19.2",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@copilotkit/runtime": "^1.51.2",
@@ -27,13 +44,14 @@
     "@google-cloud/bigquery": "^8.1.1",
     "@google/adk": "^0.2.4",
     "@google/adk-devtools": "^0.2.4",
-    "@google/generative-ai": "^0.24.1",
-    "@types/express": "^5.0.6",
-    "@types/node": "^25.1.0",
+    "@prisma/client": "^6.19.2",
+    "ag-ui-adk": "file:ag-ui-adk",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
     "google-auth-library": "^10.5.0",
-    "lodash": "^4.17.23",
+    "lru-cache": "^10.4.3",
+    "pino": "^9.6.0",
     "reflect-metadata": "^0.2.2",
     "zod": "^3.25.76"
   }

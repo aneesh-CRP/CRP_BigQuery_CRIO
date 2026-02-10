@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  threads   Thread[]
+  createdAt DateTime @default(now())
+}
+
+model Thread {
+  id        String    @id @default(uuid())
+  title     String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  role      String   // "user" | "assistant" | "tool"
+  type      String   @default("text") // "text" | "tool_call" | "tool_result" | "sql_query"
+  content   String
+  metadata  Json?    // Structured data for tool calls { name, args, result, query, etc. }
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+}
+
+// ADK Session persistence (enables scale-to-zero)
+model AdkSession {
+  id             String          @id // matches ADK sessionId (= threadId)
+  appName        String
+  userId         String
+  state          Json            @default("{}")
+  lastUpdateTime DateTime        @updatedAt
+  createdAt      DateTime        @default(now())
+  events         AdkSessionEvent[]
+
+  @@index([appName, userId])
+}
+
+model AdkSessionEvent {
+  id           String     @id @default(uuid())
+  sessionId    String
+  session      AdkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  eventData    Json       // Full serialized ADK Event
+  timestamp    DateTime   @default(now())
+  invocationId String?
+  author       String?
+
+  @@index([sessionId])
+  @@index([sessionId, timestamp])
+}
+
