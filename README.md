@@ -17,7 +17,7 @@ An AI-powered agent that helps users query clinical research data in BigQuery us
 bigquery-agent/
 ├── server.mts              # Express server with CopilotKit + ADK integration
 ├── agent.ts                # Root ADK agent (clinical research orchestrator)
-├── config.json             # Project-specific settings (projectId, datasetId)
+├── config.json             # Project settings & AI grounding domain knowledge
 ├── schema.json             # BigQuery table schema definitions
 │
 ├── agents/
