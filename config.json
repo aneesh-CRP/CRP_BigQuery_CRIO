@@ -4,7 +4,7 @@
         "location": "us-central1"
     },
     "bigquery": {
-        "datasetId": "your_dataset"
+        "datasetId": "crio_data"
     },
     "branding": {
         "appName": "BigQuery Agent",
