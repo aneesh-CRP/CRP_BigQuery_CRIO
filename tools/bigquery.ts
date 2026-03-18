@@ -234,7 +234,7 @@ export const createBigQueryTools = (authToken?: string, onLog?: (msg: string) =>
                 const errorReason = error?.errors?.[0]?.reason;
 
                 // Log full details server-side for debugging
-                logger.error({ err: errorMessage, reason: errorReason, billingProjectId, projectId, datasetId, location }, '[BigQuery] Query error');
+                logger.error({ err: errorMessage, reason: errorReason, query: normalizedQuery, billingProjectId, projectId, datasetId, location }, '[BigQuery] Query error');
                 if (error?.errors?.length) {
                     logger.error({ details: error.errors }, '[BigQuery] Query error details');
                 }
