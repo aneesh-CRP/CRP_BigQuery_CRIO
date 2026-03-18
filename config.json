@@ -33,5 +33,53 @@
             ],
             "piiWarning": "Never output personally identifiable information (names, addresses, IDs) unless explicitly authorized."
         }
+    },
+    "grounding": {
+        "domainDescription": "This is a clinical research data warehouse for a multi-site clinical trial organization. Data is organized around the hierarchy: Organization → Site → Study → Subject. 'Subject' means an enrolled trial participant (fact_subject_* tables). 'Patient' means a pre-enrollment recruit (patient_* / dim_* tables). Always apply standard filters for active, non-test studies unless the user explicitly requests otherwise.",
+        "terminology": {
+            "Subject": "An enrolled clinical trial participant tracked in subject_* / fact_subject_* tables.",
+            "Patient": "A potential recruit in the pre-enrollment outreach system tracked in patient_* / dim_* / fact_patient_funnel tables.",
+            "Study": "A clinical trial protocol instance, the central entity linking subjects, sites, and visits.",
+            "Site": "A physical research location that runs one or more studies under an Organization.",
+            "Organization": "The top-level entity in the hierarchy: Organization → Site → Study → Subject.",
+            "GAAP Revenue": "Recognized revenue tracked in gaap_revenue_group and gaap_revenue_data_point (the modern revenue tables)."
+        },
+        "keyRelationships": [
+            "fact_subject_visit sv JOIN fact_study s ON sv.study_key = s.study_key",
+            "fact_study fs JOIN clinical_trial ct ON fs.clinical_trial_key = ct.clinical_trial_key",
+            "fact_subject_visit sv JOIN fact_subject_visit_procedure svp ON sv.subject_visit_key = svp.subject_visit_key",
+            "fact_site fs JOIN organization o ON fs.organization_key = o.organization_key",
+            "gaap_revenue_group rg JOIN gaap_revenue_data_point rdp ON rg.group_id = rdp.group_id",
+            "dim_race and dim_ethnicity join on patient_key, NOT subject_key"
+        ],
+        "commonFilters": [
+            "Active studies: fact_study.is_active = 1",
+            "Real studies only: LOWER(fact_study.nickname) NOT LIKE '%test%' AND NOT LIKE '%demo%' AND NOT LIKE '%sandbox%' AND NOT LIKE '%pre-screen%'",
+            "Active subjects: use fact_subject_status_audit_log to exclude cancelled/screen-failed subjects"
+        ],
+        "statusCodes": {
+            "subjectVisitStatus": { "0": "Cancelled", "1": "Active", "10": "Completed", "20": "Partially Completed", "-1": "Deleted" },
+            "appointmentStatus": { "0": "Cancelled", "1": "Active", "10": "Completed", "11": "In Progress", "12": "Paused", "20": "Partially Completed", "-1": "Deleted" },
+            "appointmentType": { "0": "Regular Visit", "1": "Ad Hoc Visit", "2": "General Appointment", "3": "Block" },
+            "cancelType": { "1": "No Show", "2": "Site Cancelled", "3": "Patient Cancelled" },
+            "clinicalTrialType": { "1": "Commercial", "2": "NIH" },
+            "invoiceStatus": { "0": "Draft", "1": "Unpaid", "2": "Paid", "3": "Partially Paid" },
+            "paymentType": { "1": "Check", "2": "Direct Deposit", "3": "Credit/Debit", "4": "Credit Memo", "5": "Refund" },
+            "gaapRevenueAmountType": { "1": "Upfront", "2": "Holdback" },
+            "documentStatus": { "-1": "Deleted", "0": "Updated", "1": "Active", "2": "Incoming", "3": "Assigned", "4": "Rejected", "6": "Completed", "10": "Signed" },
+            "studyTypeVisit": { "4": "Screening Block", "5": "Treatment Block", "-1": "Treatment Group" }
+        },
+        "preferredTables": {
+            "studies": ["fact_study"],
+            "enrolledSubjects": ["fact_subject_visit", "fact_subject_status_audit_log"],
+            "visitCompletion": ["fact_subject_visit (filter: subject_visit_status = 10)"],
+            "procedureData": ["fact_subject_visit_procedure", "fact_subject_visit_procedure_question"],
+            "enrollmentFunnel": ["fact_patient_funnel"],
+            "revenue": ["gaap_revenue_group", "gaap_revenue_data_point"],
+            "patientDemographics": ["dim_race", "dim_ethnicity", "dim_bmi", "dim_conditions", "dim_medication"],
+            "siteMetrics": ["cache_reports_overview"],
+            "appointments": ["calendar_appointment", "fact_subject_visit"],
+            "auditTrail": ["fact_subject_visit_audit_log", "appointment_audit_log", "fact_subject_status_audit_log"]
+        }
     }
 }

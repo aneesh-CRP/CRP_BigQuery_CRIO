@@ -51,7 +51,8 @@ Always use the \`${config.agent.sqlSpecialist.name}\` for any database interacti
       }
 
       const response = params.response as any;
-      const parts = response?.candidates?.[0]?.content?.parts;
+      const candidate = response?.candidates?.[0];
+      const parts = candidate?.content?.parts;
       if (parts) {
         for (const part of parts) {
           if (part.text) {
@@ -62,7 +63,12 @@ Always use the \`${config.agent.sqlSpecialist.name}\` for any database interacti
           }
         }
       } else if (response) {
-        logger.debug('[RootAgent] Response exists but no candidates/parts found');
+        logger.warn({
+          finishReason: candidate?.finishReason,
+          safetyRatings: candidate?.safetyRatings,
+          candidateCount: response?.candidates?.length,
+          promptFeedback: response?.promptFeedback,
+        }, '[RootAgent] Response exists but no candidates/parts found');
       } else {
         logger.debug('[RootAgent] No response object in params');
       }

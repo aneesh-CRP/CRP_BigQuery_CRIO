@@ -85,8 +85,10 @@ export class DbSessionService extends BaseSessionService {
 
         if (!dbSession) return undefined;
 
-        // Reconstruct ADK Event objects from stored JSON
-        let events: Event[] = dbSession.events.map((e) => e.eventData as unknown as Event);
+        // Reconstruct ADK Event objects from stored JSON, filtering out any persisted error events
+        let events: Event[] = dbSession.events
+            .map((e) => e.eventData as unknown as Event)
+            .filter((e) => (e as any).errorCode === undefined || (e as any).errorCode === null);
 
         // If we fetched with numRecentEvents (desc order), reverse to chronological
         if (request.config?.numRecentEvents) {
@@ -147,6 +149,12 @@ export class DbSessionService extends BaseSessionService {
     override async appendEvent({ session, event }: { session: Session; event: Event }): Promise<Event> {
         // Let the base class handle state delta merging and event ID assignment
         const processedEvent = await super.appendEvent({ session, event });
+
+        // Skip persisting error events — replaying them corrupts the model's conversation context
+        if ((processedEvent as any).errorCode !== undefined && (processedEvent as any).errorCode !== null) {
+            logger.warn({ sessionId: session.id, eventId: processedEvent.id, errorCode: (processedEvent as any).errorCode }, '[DbSessionService] Skipping persistence of error event');
+            return processedEvent;
+        }
 
         // Persist event and updated state to DB
         try {

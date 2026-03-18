@@ -12,6 +12,27 @@ export const createSqlAgent = (authToken?: string, onLog?: (msg: string) => void
     const fullyQualifiedDataset = `${projectId}.${datasetId}`;
     const { listTables, getTableSchema, executeBigQuery } = createBigQueryTools(authToken, onLog);
 
+    const grounding = (config as any).grounding;
+    const domainKnowledgeSection = grounding ? `
+### Domain Knowledge
+${grounding.domainDescription}
+
+**Terminology**:
+${Object.entries(grounding.terminology as Record<string, string>).map(([term, def]) => `- "${term}" → ${def}`).join('\n')}
+
+**Key Relationships**:
+${(grounding.keyRelationships as string[]).map((r: string) => `- ${r}`).join('\n')}
+
+**Standard Filters (apply by default)**:
+${(grounding.commonFilters as string[]).map((f: string) => `- ${f}`).join('\n')}
+
+**Status Codes**:
+${Object.entries(grounding.statusCodes as Record<string, Record<string, string>>).map(([group, codes]) => `  ${group}: ${Object.entries(codes).map(([k, v]) => `${k}=${v}`).join(', ')}`).join('\n')}
+
+**Preferred Tables**:
+${Object.entries(grounding.preferredTables as Record<string, string[]>).map(([cat, tables]) => `  ${cat}: ${tables.join(', ')}`).join('\n')}
+` : '';
+
     return new LlmAgent({
         name: sqlSpecialist.name,
         model: config.agent.model,
@@ -47,7 +68,7 @@ Your job is to answer data questions by querying the BigQuery dataset.
 - **Join Carefully**: Use the schema to identify foreign keys for joins.
 - **Dataset**: ${fullyQualifiedDataset}.
 - **Handling Errors**: If a query fails, analyze the error, assume your schema knowledge might be slightly off, check the schema again, and retry with a corrected query.
-
+${domainKnowledgeSection}
 CRITICAL: You MUST provide a final text answer to the Orchestrator describing what you found or reporting that no data was found. Do NOT end the turn without a text response.`,
         tools: [listTables, getTableSchema, executeBigQuery],
         beforeModelCallback: (params) => {
