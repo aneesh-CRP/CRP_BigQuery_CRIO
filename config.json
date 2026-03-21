@@ -58,10 +58,15 @@
             "Active subjects: use fact_subject_status_audit_log to exclude cancelled/screen-failed subjects"
         ],
         "statusCodes": {
-            "subjectVisitStatus": { "0": "Cancelled", "1": "Active", "10": "Completed", "20": "Partially Completed", "-1": "Deleted" },
-            "appointmentStatus": { "0": "Cancelled", "1": "Active", "10": "Completed", "11": "In Progress", "12": "Paused", "20": "Partially Completed", "-1": "Deleted" },
+            "studyStatus": { "0": "Configuring", "1": "Startup", "2": "Enrolling", "3": "Maintenance", "4": "Pre-Closed", "10": "Closed", "11": "Suspended", "12": "Withdrawn" },
+            "subjectStatus": { "-2": "Not Interested", "-1": "Not Eligible", "1": "Interested", "2": "Prequalified", "3": "No Show/Cancelled V1", "4": "Scheduled V1", "10": "Screening", "11": "Enrolled", "12": "Screen Fail", "13": "Discontinued", "20": "Completed" },
+            "subjectVisitStatus": { "0": "Unscheduled", "1": "Scheduled", "11": "In Progress", "12": "Paused", "20": "Cancelled", "21": "Partially Complete", "22": "Complete", "23": "Completed Outside CRIO" },
+            "appointmentStatus": { "0": "Cancelled", "1": "Completed", "11": "In Progress", "12": "Paused", "20": "Partially Completed", "23": "Completed Outside of CRIO", "-1": "Deleted" },
             "appointmentType": { "0": "Regular Visit", "1": "Ad Hoc Visit", "2": "General Appointment", "3": "Block" },
             "cancelType": { "1": "No Show", "2": "Site Cancelled", "3": "Patient Cancelled" },
+            "changeType": { "0": "Created", "1": "User Added", "2": "User Removed", "3": "Rescheduled", "4": "Cancelled", "5": "Deleted", "6": "Restored" },
+            "patientStatus": { "-20": "Deceased", "-10": "Do Not Enroll", "-5": "Bad Contact Info", "-1": "Do Not Solicit", "1": "Available" },
+            "studyRecruitingPatientStatus": { "0": "Prospect", "1": "Contacting", "10": "Interested", "20": "Screening", "30": "Success", "40": "Screen Fail", "45": "In Another Study", "50": "Not Eligible", "55": "Not Applicable", "60": "Not Interested", "65": "Give Up", "70": "Bad Contact Info", "75": "Do Not Solicit", "80": "Do Not Enroll", "85": "Deceased" },
             "clinicalTrialType": { "1": "Commercial", "2": "NIH" },
             "invoiceStatus": { "0": "Draft", "1": "Unpaid", "2": "Paid", "3": "Partially Paid" },
             "paymentType": { "1": "Check", "2": "Direct Deposit", "3": "Credit/Debit", "4": "Credit Memo", "5": "Refund" },
